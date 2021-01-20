@@ -223,9 +223,13 @@ services:
     command: '"0 0 * * * gosu sentry sentry cleanup --days $SENTRY_EVENT_RETENTION_DAYS"'
   nginx:
     << : *restart_policy
-    ports:
-      - '$SENTRY_BIND:80/tcp'
+    expose:
+      - '80/tcp'
     image: 'nginx:1.16'
+    labels:
+      - "traefik.http.routers.sentry.rule=Host(`$SENTRY_HOSTNAME`)"
+      - "traefik.http.routers.sentry.tls=true"
+      - "traefik.http.routers.sentry.tls.certresolver=default"
     volumes:
       - type: bind
         read_only: true
