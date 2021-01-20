@@ -329,6 +329,10 @@ services:
     ports:
       - "$SENTRY_BIND:80/tcp"
     image: "nginx:1.21.0-alpine"
+    labels:
+      - "traefik.http.routers.sentry.rule=Host(`$SENTRY_HOSTNAME`)"
+      - "traefik.http.routers.sentry.tls=true"
+      - "traefik.http.routers.sentry.tls.certresolver=default"
     volumes:
       - type: bind
         read_only: true
