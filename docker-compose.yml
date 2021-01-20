@@ -227,12 +227,16 @@ services:
       - '80/tcp'
     image: 'nginx:1.16'
     labels:
+      - "traefik.enable=true"
       - "traefik.http.routers.sentry.rule=Host(`$SENTRY_HOSTNAME`)"
       - "traefik.http.routers.sentry.tls=true"
       - "traefik.http.routers.sentry.tls.certresolver=default"
+      - "traefik.docker.network=traefik-net"
+    networks:
+      - default
+      - traefik
     volumes:
       - type: bind
-        read_only: true
         source: ./nginx
         target: /etc/nginx
     depends_on:
@@ -274,3 +278,8 @@ volumes:
   sentry-kafka-log:
   sentry-smtp-log:
   sentry-clickhouse-log:
+
+networks:
+  traefik:
+    external:
+      name: docker-traefik-setup_default
