@@ -231,6 +231,7 @@ services:
       - "traefik.http.routers.sentry.rule=Host(`$SENTRY_HOSTNAME`)"
       - "traefik.http.routers.sentry.tls=true"
       - "traefik.http.routers.sentry.tls.certresolver=default"
+      - "traefik.docker.network=docker-traefik-setup_default"
     networks:
       - default
       - traefik
