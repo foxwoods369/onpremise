@@ -8,15 +8,30 @@
 
 version: '3.4'
 
-x-defaults: &defaults
+x-restart-policy: &restart_policy
   restart: unless-stopped
+x-depends_on-healthy: &depends_on-healthy
+  condition: service_healthy
+x-depends_on-default: &depends_on-default
+  condition: service_started
+x-healthcheck-defaults: &healthcheck_defaults
+  interval: 30s
+  timeout: 5s
+  retries: 5
+  start_period: 10s
+x-defaults: &defaults
+  <<: *restart_policy
   build:
     context: .
   depends_on:
-    - redis
-    - postgres
-    - memcached
-    - smtp
+    redis:
+      <<: *depends_on-healthy
+    postgres:
+      <<: *depends_on-healthy
+    memcached:
+      <<: *depends_on-default
+    smtp:
+      <<: *depends_on-default
   env_file: .env
   environment:
     SENTRY_MEMCACHED_HOST: memcached
@@ -24,29 +39,57 @@ x-defaults: &defaults
     SENTRY_POSTGRES_HOST: postgres
     SENTRY_EMAIL_HOST: smtp
   volumes:
-    - sentry-data:/var/lib/sentry/files
+    - "sentry-data:/var/lib/sentry/files"
 
 
 services:
   smtp:
-    restart: unless-stopped
+    <<: *restart_policy
     image: tianon/exim4
+    volumes:
+      - "sentry-smtp:/var/spool/exim4"
+      - "sentry-smtp-log:/var/log/exim4"
 
   memcached:
-    restart: unless-stopped
+    <<: *restart_policy
     image: memcached:1.5-alpine
+    healthcheck:
+      <<: *healthcheck_defaults
+      test: echo stats | nc 127.0.0.1 11211
 
   redis:
-    restart: unless-stopped
+    <<: *restart_policy
     image: redis:3.2-alpine
+    healthcheck:
+      <<: *healthcheck_defaults
+      test: redis-cli ping
+    volumes:
+      - "sentry-redis:/data"
+    ulimits:
+      nofile:
+        soft: 10032
+        hard: 10032
 
   postgres:
-    restart: unless-stopped
+    <<: *restart_policy
     image: postgres:9.5
+    healthcheck:
+      <<: *healthcheck_defaults
+      test: ["CMD_SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+    command: 
+      [
+        "postgres",
+        "-c",
+        "wal_level=logical",
+        "-c",
+        "max_replication_slots=1",
+        "-c",
+        "max_wal_senders=1",
+      ]
     environment:
       POSTGRES_HOST_AUTH_METHOD: 'trust'
     volumes:
-      - sentry-postgres:/var/lib/postgresql/data
+      - "sentry-postgres:/var/lib/postgresql/data"
 
   web:
     <<: *defaults
@@ -58,6 +101,10 @@ services:
       - "traefik.http.routers.sentry.tls=true"
       - "traefik.http.routers.sentry.tls.certresolver=default"
       - "traefik.docker.network=docker-traefik-setup_default"
+    networks:
+      - default
+      - traefik
+
 
   cron:
     <<: *defaults
@@ -73,3 +120,12 @@ volumes:
       external: true
     sentry-postgres:
       external: true
+    sentry-redis:
+      external: true
+    sentry-smtp:
+    sentry-smtp-log:
+
+networks:
+  traefik:
+    external:
+      name: docker-traefik-setup_default
