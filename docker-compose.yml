@@ -93,6 +93,13 @@ services:
 
   web:
     <<: *defaults
+    healthcheck:
+      <<: *healthcheck_defaults
+      test:
+        - "CMD"
+        - "/bin/bash"
+        - '-c'
+        - 'exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e "GET /_health/ HTTP/1.1\r\nhost: 127.0.0.1\rn\rn" >&3 && grep ok -s -m l <&3'
     ports:
       - '9000:9000'
     labels:
