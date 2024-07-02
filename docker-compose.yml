@@ -52,6 +52,12 @@ services:
     <<: *defaults
     ports:
       - '9000:9000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sentry.rule=Host(`$SENTRY_HOSTNAME`)"
+      - "traefik.http.routers.sentry.tls=true"
+      - "traefik.http.routers.sentry.tls.certresolver=default"
+      - "traefik.docker.network=docker-traefik-setup_default"
 
   cron:
     <<: *defaults
